@@ -10,7 +10,7 @@ RUN apt-get update -y \
  && apt-get install -qq -y libev-dev libpcap-dev libreadline-dev libxml2-dev libxslt-dev libtk-img libtool \
  && apt-get install -qq -y python3 python3-dev python3-pip python3-setuptools python3-full python3-tk pipx \
  && apt-get install -qq -y autoconf automake gawk g++ gcc git pkg-config tk sudo \
- && apt-get install -qq -y bridge-utils ebtables ethtool iproute2 radvd \
+ && apt-get install -qq -y bridge-utils ebtables ethtool iproute2 radvd docker.io \
  && apt-get clean \
  && rm -rf /tmp/* /var/lib/apt/lists/* /var/tmp/*
 
