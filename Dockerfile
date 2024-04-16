@@ -1,8 +1,38 @@
+# syntax=docker/dockerfile:1
 FROM ubuntu:22.04
 LABEL maintainer "Daniel R. Kerr <daniel.r.kerr@gmail.com>"
+LABEL Description="CORE Docker Ubuntu Image"
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV TERM xterm
+
+ARG PREFIX=/usr/local
+ARG BRANCH=master
+ARG PROTOC_VERSION=3.19.6
+ARG ARCH=aarch_64
+#ARG ARCH=x86_64
+ARG VENV_PATH=/opt/core/venv
+ENV PATH="$PATH:${VENV_PATH}/bin"
+WORKDIR /opt
+
+# install system dependencies
+#---------------------------------------
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    sudo \
+    wget \
+    tzdata \
+    libpcap-dev \
+    libpcre3-dev \
+    libprotobuf-dev \
+    libxml2-dev \
+    protobuf-compiler \
+    unzip \
+    uuid-dev \
+    software-properties-common && \
+    apt-get autoremove -y
 
 # install core dependencies
 #---------------------------------------
@@ -10,7 +40,7 @@ RUN apt-get update -y \
  && apt-get install -qq -y libev-dev libpcap-dev libreadline-dev libxml2-dev libxslt-dev libtk-img libtool \
  && apt-get install -qq -y python3 python3-dev python3-pip python3-setuptools python3-full python3-tk pipx \
  && apt-get install -qq -y autoconf automake gawk g++ gcc git pkg-config tk sudo \
- && apt-get install -qq -y bridge-utils ebtables ethtool iproute2 radvd docker.io \
+ && apt-get install -qq -y bridge-utils ebtables ethtool iproute2 nftables radvd docker.io \
  && apt-get clean \
  && rm -rf /tmp/* /var/lib/apt/lists/* /var/tmp/*
 
@@ -34,34 +64,33 @@ RUN git clone https://github.com/USNavalResearchLaboratory/ospf-mdr.git /opt/osp
 
 # install core
 #---------------------------------------
-RUN pip3 install --upgrade pip \
- && pip3 install cython \
- && pip3 install dataclasses fabric grpcio==1.54.2 grpcio-tools==1.54.2 lxml mako netaddr netifaces Pillow poetry psutil pyyaml \
- && pip3 install pyproj
+RUN git clone https://github.com/coreemu/core && \
+    cd core && \
+    git checkout ${BRANCH} && \
+    ./setup.sh && \
+    PATH=/root/.local/bin:$PATH inv install -v -p ${PREFIX} && \
+    cd /opt && \
+    rm -rf ospf-mdr
 
-RUN git clone -b release-9.0.3 https://github.com/coreemu/core.git /opt/core \
- && cd /opt/core \
- && ./setup.sh \
-# && source /root/.bashrc \
- && apt update \
- && inv install \
- && mkdir -p /etc/core \
- && cp -n /opt/core/package/etc/core.conf /etc/core \
- && cp -n /opt/core/package/etc/logging.conf /etc/core \
- && cp /opt/core/venv/bin/core-cleanup /usr/local/bin/core-cleanup \
- && cp /opt/core/venv/bin/core-cli /usr/local/bin/core-cli \
- && cp /opt/core/venv/bin/core-daemon /usr/local/bin/core-daemon \
- && cp /opt/core/venv/bin/core-gui /usr/local/bin/core-gui \
- && cp /opt/core/venv/bin/core-player /usr/local/bin/core-player \
- && cp /opt/core/venv/bin/core-route-monitor /usr/local/bin/core-route-monitor \
- && cp /opt/core/venv/bin/core-service-update /usr/local/bin/core-service-update \
- && cd /opt/core/daemon \
- && poetry build -f wheel \
- && pip3 install /opt/core/daemon/dist/* \
- && cd
-# && rm -rf /opt/core
-
-ENV PYTHONPATH "${PYTHONPATH}:/usr/local/lib/python3.10/site-packages"
+# install emane
+#---------------------------------------
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${ARCH}.zip && \
+    mkdir protoc && \
+    unzip protoc-${PROTOC_VERSION}-linux-${ARCH}.zip -d protoc && \
+    git clone https://github.com/adjacentlink/emane.git && \
+    cd emane && \
+    ./autogen.sh && \
+    ./configure --prefix=/usr && \
+    make -j$(nproc)  && \
+    make install && \
+    cd src/python && \
+    make clean && \
+    PATH=/opt/protoc/bin:$PATH make && \
+    ${VENV_PATH}/bin/python -m pip install . && \
+    cd /opt && \
+    rm -rf protoc && \
+    rm -rf emane && \
+    rm -f protoc-${PROTOC_VERSION}-linux-${ARCH}.zip
 
 # configure core
 #---------------------------------------
@@ -73,17 +102,6 @@ RUN apt-get update -y \
  && apt-get install -qq -y iputils-ping moreutils net-tools scamper tcpdump traceroute tshark \
  && apt-get clean \
  && rm -rf /tmp/* /var/lib/apt/lists/* /var/tmp/*
-
-# install emanes
-#---------------------------------------
-#RUN wget -O /opt/emane.tgz https://adjacentlink.com/downloads/emane/emane-1.2.5-release-1.ubuntu-18_04.amd64.tar.gz \
-# && cd /opt \
-# && tar xzf /opt/emane.tgz \
-# && cd /opt/emane-1.2.5-release-1/debs/ubuntu-18_04/amd64 \
-# && dpkg -i *.deb \
-# && apt-get install -f \
-# && cd /root \
-# && rm -rf /opt/emane.tgz /opt/emane-1.2.5-release-1
 
 # install and configure ssh
 #---------------------------------------
