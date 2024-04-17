@@ -9,8 +9,8 @@ ENV TERM xterm
 ARG PREFIX=/usr/local
 ARG PROTOC_VERSION=3.19.6
 
-ARG BRANCH=master
-# ARG BRANCH=release-9.0.3
+# ARG BRANCH=master
+ARG BRANCH=release-9.0.3
 
 # ARG ARCH=aarch_64 # for arm-based MacOS machines
 ARG ARCH=x86_64 # for x86-based linux machines
