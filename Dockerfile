@@ -7,10 +7,14 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV TERM xterm
 
 ARG PREFIX=/usr/local
-ARG BRANCH=master
 ARG PROTOC_VERSION=3.19.6
-ARG ARCH=aarch_64
-#ARG ARCH=x86_64
+
+ARG BRANCH=master
+# ARG BRANCH=release-9.0.3
+
+# ARG ARCH=aarch_64 # for arm-based MacOS machines
+ARG ARCH=x86_64 # for x86-based linux machines
+
 ARG VENV_PATH=/opt/core/venv
 ENV PATH="$PATH:${VENV_PATH}/bin"
 WORKDIR /opt
